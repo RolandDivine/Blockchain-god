@@ -1,18 +1,34 @@
-pragma solidity ^0.4.11;
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8 ;
 
-import "zeppelin-solidity/contracts/token/PausableToken.sol";
-import "zeppelin-solidity/contracts/token/MintableToken.sol";
-import "./BurnableToken.sol";
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "./JJ_PoundsLockBox.sol"; 
 
-contract JJ_PoundsToken is BurnableToken, PausableToken, MintableToken {
+contract JJ_PoundsToken is ERC20,MedPingLockBox{
+    using SafeMath for uint256;
+    uint256 tSupply = 200 * 10**6 * (10 ** uint256(decimals()));
 
-    string public constant symbol = "JJP";
+    constructor() ERC20("JJP", "JJP"){
+        _mint(msg.sender, tSupply);
+    }
+    
+    function transfer(address _to, uint256 _value) canTransfer() investorChecks(_value,msg.sender) public override returns (bool success) {
+        super.transfer(_to,_value);
+        return true;
+    }
 
-    string public constant name = "JJ_Pounds";
+    function transferFrom(address _from, address _to, uint256 _value) canTransfer() investorChecks(_value,_from) public override returns (bool success) {
+       super.transferFrom(_from, _to, _value);
+        return true;
+    }
 
-    uint8 public constant decimals = 18;
-
-    function burn(uint256 _value) whenNotPaused public {
-        super.burn(_value);
+    function burnJJP(uint256 _date) public onlyBurner() returns(bool success){
+        require(!isTokenBurntOnDate(_date));
+        require(released);
+        uint256 totalToBurn = (burnBucketBal.mul(10 *100)).div(10000); //burn 10 % of burnbucket quaterly
+        _burn(msg.sender, totalToBurn);
+        burnDateStatus[_date] = true;
+        return true;
     }
 }
